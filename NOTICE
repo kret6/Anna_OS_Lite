@@ -1,0 +1,32 @@
+ANNA OS Lite
+Copyright 2026 Krzysztof Leszczyński
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+------------------------------------------------------------------------------
+NOT A MEDICAL DEVICE
+------------------------------------------------------------------------------
+
+ANNA OS Lite is a training simulator. It is not a medical device, it is not
+clinical decision support, and it must not be used to guide the care of a real
+patient. It does not diagnose, it does not measure anything about a real person,
+and it will not teach you first aid.
+
+Nothing in this software is a substitute for training delivered by a qualified
+instructor, or for the resuscitation guidelines that apply where you are.
+
+------------------------------------------------------------------------------
+NAME AND LOGO
+------------------------------------------------------------------------------
+
+The Apache License grants rights to the software. It does not grant rights to
+the name "ANNA OS" or "ANNA OS Lite", or to the logo (see section 6 of the
+License). You are free to use, modify and redistribute this software, including
+under your own name — but please do not present a modified version as ANNA OS.
+
+------------------------------------------------------------------------------
+INCLUDED COMPONENTS
+------------------------------------------------------------------------------
+
+medicos-core.js is the physiology engine, distributed here as a compiled bundle.
+It is covered by this same License. Its source is not part of this repository.

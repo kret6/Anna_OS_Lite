@@ -1,0 +1,15 @@
+{
+  "name": "ANNA OS Lite — AED trainer",
+  "short_name": "ANNA OS Lite",
+  "description": "An AED training simulator that runs entirely on your phone, offline. Not a medical device.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111417",
+  "theme_color": "#111417",
+  "lang": "en",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
