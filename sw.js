@@ -5,7 +5,7 @@
  * jest JEDYNYM sposobem wypchnięcia aktualizacji, więc trzeba o tym pamiętać przy
  * każdym wydaniu.
  */
-var CACHE = 'anna-os-lite-v1';
+var CACHE = 'anna-os-lite-v2';
 
 var FILES = [
   './',
@@ -13,7 +13,34 @@ var FILES = [
   'app.js',
   'medicos-core.js',
   'icon.svg',
-  'manifest.json'
+  'manifest.json',
+  // Glos AED wchodzi do cache'u PRZY INSTALACJI, nie przy pierwszym odtworzeniu.
+  // Inaczej pierwsze uzycie bez sieci byloby nieme — a pierwsze uzycie bez sieci
+  // jest dokladnie tym, pod co ta aplikacja jest zrobiona. To 165 KB; warte tego.
+  'audio/ana_1.mp3',
+  'audio/ana_2.mp3',
+  'audio/ana_3.mp3',
+  'audio/ana_4.mp3',
+  'audio/cpr_1.mp3',
+  'audio/cpr_2.mp3',
+  'audio/cpr_3.mp3',
+  'audio/noshock.mp3',
+  'audio/on_1.mp3',
+  'audio/on_2.mp3',
+  'audio/on_3.mp3',
+  'audio/on_4.mp3',
+  'audio/pads_1.mp3',
+  'audio/pads_2.mp3',
+  'audio/pads_3.mp3',
+  'audio/pads_check.mp3',
+  'audio/safe.mp3',
+  'audio/sh_1.mp3',
+  'audio/sh_2.mp3',
+  'audio/sh_3.mp3',
+  'audio/sh_4.mp3',
+  'audio/sh_5.mp3',
+  'audio/sh_6.mp3',
+  'audio/stop_1.mp3'
 ];
 
 self.addEventListener('install', function (e) {
@@ -34,15 +61,8 @@ self.addEventListener('fetch', function (e) {
   e.respondWith(
     caches.match(e.request).then(function (hit) {
       if (hit) return hit;
-      return fetch(e.request).then(function (res) {
-        // Nagrania głosu AED dochodzą do cache'u dopiero przy pierwszym odtworzeniu,
-        // żeby brak pliku nie wywracał instalacji (aplikacja działa bez nich).
-        if (res && res.ok && e.request.url.indexOf('/audio/') >= 0) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
-        }
-        return res;
-      }).catch(function () { return hit; });
+      return fetch(e.request).then(function (res) { return res; })
+             .catch(function () { return hit; });
     })
   );
 });

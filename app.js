@@ -59,6 +59,7 @@ var cfg = { rhythm: 'shockable', pads: 'good', touch: 'off', cpr: 'off', rosc: '
 var running = false;      // AED włączony
 var armed = false;        // przycisk wyładowania aktywny
 var seq = [];             // kolejka kwestii do wypowiedzenia
+var seqThen = null;       // co zrobic PO kolejce (faza nastepna) — patrz skip()
 var seqTimer = null;
 var cprLeft = 0;          // sekundy do końca cyklu RKO
 var audioCtx = null;
@@ -68,7 +69,8 @@ var metroTimer = null;
 // Aplikacja jest w pełni użyteczna BEZ plików audio (widać kwestię na ekranie),
 // więc nagrania można dołożyć później, nie blokując wydania.
 var players = {};
-function say(id, small) {
+/** Odtwarza kwestie i zwraca element audio (albo null, gdy sie nie da). */
+function say(id, small, onKoniec) {
   var el = $('say');
   el.textContent = LINES[id] || id;
   el.className = small ? 'small' : '';
@@ -78,25 +80,63 @@ function say(id, small) {
     p.preload = 'auto';
     players[id] = p;
   }
-  try { p.currentTime = 0; var q = p.play(); if (q && q.catch) q.catch(function () {}); }
-  catch (e) { /* brak pliku albo blokada autoodtwarzania — zostaje tekst */ }
+  p.onended = null; p.onerror = null;
+  if (onKoniec) { p.onended = onKoniec; p.onerror = onKoniec; }
+  try {
+    p.currentTime = 0;
+    var q = p.play();
+    if (q && q['catch']) q['catch'](function () { if (onKoniec) onKoniec(); });
+    return p;
+  } catch (e) {
+    if (onKoniec) onKoniec();
+    return null;
+  }
 }
 
 // ── Kolejka kwestii ──────────────────────────────────────────────────────────
+// Kolejka idzie ZA DZWIEKIEM, nie za zegarem.
+//
+// Do 31.08 kazda kwestia dostawala stale 2200 ms. Po wygenerowaniu nagran okazalo sie,
+// ze piec z nich jest dluzszych — najdluzsza „Apply pads to bare skin exactly as shown"
+// trwa 3,02 s. Przy stalej przerwie nachodzilyby na siebie i AED mowilby sam przez siebie.
+//
+// Bez nagran (albo gdy przegladarka zablokuje odtwarzanie) wracamy do zegara, bo tekst
+// na ekranie tez musi zdazyc byc przeczytany.
 function speak(list, thenFn, gapMs) {
   clearTimeout(seqTimer);
   seq = list.slice();
-  var gap = gapMs || 2200;
-  (function step() {
-    if (!seq.length) { if (thenFn) thenFn(); return; }
-    say(seq.shift());
-    seqTimer = setTimeout(step, gap);
-  })();
+  seqThen = thenFn || null;
+  var fallback = gapMs || 2200;
+  var oddech = 350;                     // pauza miedzy kwestiami, zeby nie kleily sie w jedno
+
+  function step() {
+    if (!seq.length) { var f = seqThen; seqThen = null; if (f) f(); return; }
+    var poszlo = false;
+    function dalej(opoznienie) {
+      if (poszlo) return;
+      poszlo = true;
+      clearTimeout(seqTimer);
+      seqTimer = setTimeout(step, opoznienie);
+    }
+    say(seq.shift(), false, function () { dalej(oddech); });
+    // Bezpiecznik: gdyby zdarzenie konca nie przyszlo (zablokowane audio, zerwany plik),
+    // kolejka i tak ruszy dalej. Nigdy nie wolno jej zawiesic — AED musi dojsc do analizy.
+    seqTimer = setTimeout(function () { dalej(0); }, fallback + 6000);
+  }
+  step();
 }
 function skip() {                       // przycisk „Continue" — instruktor nie czeka
   if (!running) return;
   clearTimeout(seqTimer);
-  if (seq.length) { say(seq.shift()); seqTimer = setTimeout(function () { skip(); }, 20); }
+  if (!seq.length) {
+    // Kolejka pusta, ale faza moze miec zaplanowana kontynuacje — nie gub jej.
+    var f = seqThen; seqThen = null; if (f) f();
+    return;
+  }
+  var reszta = seq.slice();
+  var f2 = seqThen;
+  seq = []; seqThen = null;
+  speak(reszta, f2, 900);
 }
 
 // ── Metronom 110/min — z oscylatora, nie z pliku ─────────────────────────────
