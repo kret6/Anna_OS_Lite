@@ -7,6 +7,11 @@
 <title>ANNA OS Lite — AED trainer</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<!-- iOS nie czyta manifestu: bez tego na ekranie glownym laduje zrzut strony. -->
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ANNA OS Lite">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
 /* Deliberately ES5-era CSS and JS throughout: this has to run on an eight-year-old
    phone in a room with no network. No frameworks, no fonts from a CDN, no build step. */

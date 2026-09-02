@@ -5,7 +5,7 @@
  * jest JEDYNYM sposobem wypchnięcia aktualizacji, więc trzeba o tym pamiętać przy
  * każdym wydaniu.
  */
-var CACHE = 'anna-os-lite-v2';
+var CACHE = 'anna-os-lite-v3';
 
 var FILES = [
   './',
@@ -13,6 +13,9 @@ var FILES = [
   'app.js',
   'medicos-core.js',
   'icon.svg',
+  'icon-192.png',
+  'icon-512.png',
+  'icon-180.png',
   'manifest.json',
   // Glos AED wchodzi do cache'u PRZY INSTALACJI, nie przy pierwszym odtworzeniu.
   // Inaczej pierwsze uzycie bez sieci byloby nieme — a pierwsze uzycie bez sieci
