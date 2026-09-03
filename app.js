@@ -13,8 +13,21 @@
 (function () {
 'use strict';
 
-var CORE = (typeof com !== 'undefined') && com.medicosanna &&
-           com.medicosanna.core && com.medicosanna.core.MedicOsCore;
+// Dojscie do silnika. Bundle jest paczka UMD i w przegladarce laduje sie jako
+// globalne `MedicOsCore`, a pakiet Kotlina siedzi DOPIERO W SRODKU: pelna sciezka
+// to `MedicOsCore.com.medicosanna.core.MedicOsCore`. Do 03.09 stalo tu samo
+// `com.medicosanna...`, czyli nazwa, ktorej opakowanie UMD nigdy nie tworzy —
+// wiec `CORE` bylo falszem ZAWSZE, w kazdej przegladarce, i aplikacja pokazywala
+// „core not loaded". Wyszlo dopiero na tablecie z 2012 roku, bo tam po raz
+// pierwszy ktokolwiek spojrzal na ten ekran uwaznie.
+//
+// Druga galaz zostaje dla buildow, ktore wysypuja `com` wprost do globalnego
+// zakresu (tak robi paczka serwowana przez sama Anne, z ktorej korzysta
+// `core-bridge.js` w PWA). Jedna linia, a obsluguje oba warianty wyjscia.
+var PKG = (typeof MedicOsCore !== 'undefined' && MedicOsCore && MedicOsCore.com) ? MedicOsCore.com
+        : (typeof com !== 'undefined') ? com
+        : null;
+var CORE = PKG && PKG.medicosanna && PKG.medicosanna.core && PKG.medicosanna.core.MedicOsCore;
 
 var $ = function (id) { return document.getElementById(id); };
 

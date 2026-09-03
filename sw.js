@@ -5,7 +5,7 @@
  * jest JEDYNYM sposobem wypchnięcia aktualizacji, więc trzeba o tym pamiętać przy
  * każdym wydaniu.
  */
-var CACHE = 'anna-os-lite-v3';
+var CACHE = 'anna-os-lite-v4';
 
 var FILES = [
   './',
