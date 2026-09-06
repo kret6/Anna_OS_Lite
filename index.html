@@ -48,6 +48,9 @@ html, body { margin: 0; padding: 0; background: #111417; color: #e8eaed;
 #row { display: flex; gap: 10px; margin-top: 10px; }
 #row button { flex: 1; height: 52px; border: 1px solid #33383d; border-radius: 10px;
   background: #1a1e21; color: #cfd4d8; font-size: 15px; }
+/* Potwierdzenie kroku: widoczne tylko wtedy, gdy AED naprawdę czeka. Zielone, bo
+   to jedyny przycisk na tym ekranie, który mówi „zrobiłem", a nie „zrób". */
+#confirm { background: #1f9d55; border-color: #1f9d55; color: #06210f; font-weight: 700; }
 #metro { margin-top: 10px; height: 30px; display: flex; align-items: center;
   justify-content: center; font-size: 13px; color: #7a8288; letter-spacing: 1px; }
 #metro.on { color: #1f9d55; }
@@ -82,6 +85,9 @@ footer { padding: 20px 16px 34px; font-size: 11px; color: #4d5459; line-height: 
   <div id="row">
     <button id="power" type="button">ON / OFF</button>
     <button id="next" type="button">Continue</button>
+    <!-- Pojawia sie TYLKO wtedy, gdy sekwencja na cos czeka. Poza tym nie ma go
+         na ekranie, zeby pierwszy ekran zostal tym, czym jest: defibrylatorem. -->
+    <button id="confirm" type="button" hidden>Pads applied</button>
   </div>
   <div id="metro">metronome off</div>
   <div id="hint">instructor controls below &#8595;</div>
@@ -131,6 +137,14 @@ footer { padding: 20px 16px 34px; font-size: 11px; color: #4d5459; line-height: 
     <div class="opts">
       <button data-set="rosc" data-val="engine">Let the model decide</button>
       <button class="warn" data-set="rosc" data-val="never">Never</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Step confirmation</legend>
+    <div class="opts">
+      <button data-set="gates" data-val="on">Wait for confirmation</button>
+      <button data-set="gates" data-val="off">Run automatically</button>
     </div>
   </fieldset>
 

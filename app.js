@@ -67,12 +67,23 @@ var LINES = {
 };
 
 // ── Ustawienia instruktora ───────────────────────────────────────────────────
-var cfg = { rhythm: 'shockable', pads: 'good', touch: 'off', cpr: 'off', rosc: 'engine' };
+var cfg = { rhythm: 'shockable', pads: 'good', touch: 'off', cpr: 'off', rosc: 'engine', gates: true };
 
 var running = false;      // AED włączony
 var armed = false;        // przycisk wyładowania aktywny
 var seq = [];             // kolejka kwestii do wypowiedzenia
 var seqThen = null;       // co zrobic PO kolejce (faza nastepna) — patrz skip()
+var bramka = null;        // oczekujaca bramka {label, repeat} — patrz BRAMKA()
+var bramkaTimer = null;   // powtarzanie polecenia, dopoki nie potwierdzisz
+
+// Bramka w kolejce: AED mowi swoje i CZEKA na potwierdzenie, zamiast jechac dalej
+// po zegarze. Prawdziwy defibrylator nie zgaduje, czy elektrody sa naklejone — mierzy
+// impedancje i nie rusza z analiza, dopoki jej nie zobaczy. Tu tej impedancji nie ma,
+// wiec zastepuje ja jedno dotkniecie: kursant potwierdza, ze zrobil to, o co proszono.
+//
+// `repeat` to kwestia powtarzana co osiem sekund w oczekiwaniu — tak samo jak robi to
+// sprzet, ktory nie doczekal sie elektrod.
+function BRAMKA(label, repeat) { return { gate: label, repeat: repeat }; }
 var seqTimer = null;
 var cprLeft = 0;          // sekundy do końca cyklu RKO
 var audioCtx = null;
@@ -124,6 +135,25 @@ function speak(list, thenFn, gapMs) {
 
   function step() {
     if (!seq.length) { var f = seqThen; seqThen = null; if (f) f(); return; }
+
+    // Bramka: zatrzymujemy kolejke i pokazujemy przycisk. `step` wroci dopiero
+    // z jego onclick — nie ma tu zadnego zegara, ktory by to obszedl.
+    if (seq[0] && seq[0].gate) {
+      if (!cfg.gates) {
+        // Instruktor wylaczyl potwierdzenia. Zdejmujemy bramke i WRACAMY NA POCZATEK
+        // kroku, zamiast leciec dalej: bramka bywa ostatnia w kolejce, a wtedy `seq`
+        // robi sie pusta i `say(undefined)` wygaszal ekran na czas bezpiecznika.
+        seq.shift();
+        step();
+        return;
+      } else {
+        bramka = seq.shift();
+        bramka.wroc = step;
+        pokazBramke(true);
+        return;
+      }
+    }
+
     var poszlo = false;
     function dalej(opoznienie) {
       if (poszlo) return;
@@ -138,6 +168,28 @@ function speak(list, thenFn, gapMs) {
   }
   step();
 }
+function pokazBramke(on) {
+  var b = $('confirm');
+  b.hidden = !on;
+  clearInterval(bramkaTimer); bramkaTimer = null;
+  if (!on) return;
+  b.textContent = bramka.gate;
+  if (bramka.repeat) {
+    say(bramka.repeat);
+    // AED powtarza polecenie, dopoki nie zobaczy skutku. Osiem sekund to tempo,
+    // przy ktorym slychac, ze urzadzenie czeka, a nie ze sie zawiesilo.
+    bramkaTimer = setInterval(function () {
+      if (bramka && bramka.repeat) say(bramka.repeat);
+    }, 8000);
+  }
+}
+function potwierdzBramke() {
+  if (!bramka) return;
+  var wroc = bramka.wroc;
+  bramka = null;
+  pokazBramke(false);
+  if (wroc) wroc();
+}
 function skip() {                       // przycisk „Continue" — instruktor nie czeka
   if (!running) return;
   clearTimeout(seqTimer);
@@ -146,6 +198,7 @@ function skip() {                       // przycisk „Continue" — instruktor 
     var f = seqThen; seqThen = null; if (f) f();
     return;
   }
+  if (bramka) return;                   // bramka czeka na CIEBIE, nie na zegar
   var reszta = seq.slice();
   var f2 = seqThen;
   seq = []; seqThen = null;
@@ -215,7 +268,8 @@ function powerOn() {
   running = true;
   loadScenario();
   lamp('');
-  speak(['on_1', 'on_2', 'on_3', 'on_4', 'pads_1', 'pads_2', 'pads_3'], padsCheck);
+  speak(['on_1', 'on_2', 'on_3', 'on_4', 'pads_1', 'pads_2', 'pads_3',
+         BRAMKA('Pads applied', 'pads_3')], padsCheck);
 }
 function padsCheck() {
   if (cfg.pads === 'poor') {           // AED nie przejdzie dalej, dopóki elektrody źle leżą
@@ -301,6 +355,7 @@ function powerOff() {
   running = false; arm(false); metronome(false); cprLeft = 0;
   setCpr(false);
   clearTimeout(seqTimer); seq = [];
+  bramka = null; pokazBramke(false);   // wylaczenie zdejmuje tez oczekiwanie
   lamp('');
   $('say').innerHTML = 'Press <b>&nbsp;ON&nbsp;</b> to start';
   $('say').className = '';
@@ -310,20 +365,26 @@ function powerOff() {
 $('power').onclick = function () { if (running) powerOff(); else powerOn(); };
 $('shock').onclick = shockPressed;
 $('next').onclick  = skip;
+$('confirm').onclick = potwierdzBramke;
 $('reset').onclick = function () { powerOff(); loadScenario(); };
 
 var buttons = document.querySelectorAll('[data-set]');
 function paint() {
   for (var i = 0; i < buttons.length; i++) {
     var b = buttons[i];
-    var on = cfg[b.getAttribute('data-set')] === b.getAttribute('data-val');
+    var k = b.getAttribute('data-set'), v = b.getAttribute('data-val');
+    // `gates` jest logiczna, wiec porownanie musi zejsc na ten sam typ, inaczej
+    // zaden z dwoch przyciskow nigdy sie nie podswietli.
+    var on = (k === 'gates') ? (cfg.gates === (v === 'on')) : (cfg[k] === v);
     b.className = (b.className.indexOf('warn') >= 0 ? 'warn ' : '') + (on ? 'sel' : '');
   }
 }
 for (var i = 0; i < buttons.length; i++) {
   buttons[i].onclick = function () {
     var k = this.getAttribute('data-set'), v = this.getAttribute('data-val');
-    cfg[k] = v;
+    // `gates` trzymamy jako logiczna, bo tak czyta ja kolejka; reszta to napisy.
+    cfg[k] = (k === 'gates') ? (v === 'on') : v;
+    if (k === 'gates' && !cfg.gates && bramka) potwierdzBramke();   // wylaczyles czekanie w trakcie
     if (k === 'rhythm') loadScenario();
     if (k === 'cpr' && CORE) CORE.setCpr(v === 'on');
     if (k === 'touch' && CORE) CORE.setPatientContact(v === 'on');
