@@ -63,11 +63,15 @@ var LINES = {
   cpr_1:     'Begin CPR.',
   cpr_2:     'Give thirty chest compressions.',
   cpr_3:     'Then give two breaths.',
-  stop_1:    'Stop CPR.'
+  stop_1:    'Stop CPR.',
+  disarm:    'Shock cancelled.'
 };
 
 // ── Ustawienia instruktora ───────────────────────────────────────────────────
-var cfg = { rhythm: 'shockable', pads: 'good', touch: 'off', cpr: 'off', rosc: 'engine', gates: true };
+// `rosc: 'never'` DOMYSLNIE. Wlasciciel 07.09: „nie bedziemy nawet dawac ROSC, bo
+// chodzi tylko o procedure i namiastke lalki i AED". Rytm wraca po kazdym wyladowaniu,
+// wiec cykl sie powtarza i kursant cwiczy sekwencje, a nie goni za wynikiem.
+var cfg = { rhythm: 'shockable', pads: 'good', touch: 'off', cpr: 'off', rosc: 'never', gates: true };
 
 var running = false;      // AED włączony
 var armed = false;        // przycisk wyładowania aktywny
@@ -272,9 +276,16 @@ function powerOn() {
          BRAMKA('Pads applied', 'pads_3')], padsCheck);
 }
 function padsCheck() {
-  if (cfg.pads === 'poor') {           // AED nie przejdzie dalej, dopóki elektrody źle leżą
+  if (cfg.pads === 'poor') {
+    // AED nie przejdzie dalej, dopóki elektrody źle leżą — ale nie powtarza w kółko
+    // do znudzenia. Mówi „sprawdź elektrody" i CZEKA na potwierdzenie, że poprawione.
+    //
+    // Pętla domyka się tu ładnie: kursant poprawia i potwierdza, a instruktor
+    // rozstrzyga panelem, CZY POMOGŁO. Jeśli zostawił „złe przyleganie", komunikat
+    // wraca — i to jest uczciwe, bo w rzeczywistości elektroda przyklejona na mokrą
+    // albo owłosioną skórę też nie zacznie nagle przylegać od samego dobrych chęci.
     lamp('analyze');
-    speak(['pads_check'], padsCheck, 3000);
+    speak(['pads_check', BRAMKA('Pads re-seated', 'pads_check')], padsCheck, 3000);
     return;
   }
   analyse();
@@ -300,14 +311,42 @@ function analyseDone() {
   if (cfg.rhythm === 'shockable') {
     lamp('shock');
     arm(true);
-    speak(['sh_1', 'sh_2', 'sh_3', 'sh_4', 'sh_5'], null);
+    speak(['sh_1', 'sh_2', 'sh_3', 'sh_4', 'sh_5'], czekajNaWyladowanie);
   } else {
     lamp('safe');
     speak(['noshock', 'safe'], cprPhase);
   }
 }
+// ── OCZEKIWANIE 2 ────────────────────────────────────────────────────────────
+//
+// Tu potwierdzeniem NIE jest osobny przycisk, tylko sam przycisk wyładowania —
+// więc bramka wygląda inaczej niż przy elektrodach: AED czeka z naładowaną energią,
+// powtarza polecenie, a jeśli nikt nie naciśnie, ROZŁADOWUJE SIĘ i każe wrócić do
+// uciśnięć. To jest zachowanie prawdziwego sprzętu i zarazem lekcja: energia nie
+// czeka w nieskończoność, a przerwa w uciśnięciach kosztuje.
+var czekanieTimer = null, rozbrojenieTimer = null;
+
+function czekajNaWyladowanie() {
+  if (!running || !armed) return;
+  clearInterval(czekanieTimer); clearTimeout(rozbrojenieTimer);
+  czekanieTimer = setInterval(function () { if (armed) say('sh_5'); }, 8000);
+  rozbrojenieTimer = setTimeout(rozbrojenie, 20000);
+}
+function przerwijCzekanie() {
+  clearInterval(czekanieTimer); czekanieTimer = null;
+  clearTimeout(rozbrojenieTimer); rozbrojenieTimer = null;
+}
+function rozbrojenie() {
+  if (!running || !armed) return;
+  przerwijCzekanie();
+  arm(false);
+  lamp('safe');
+  speak(['disarm'], cprPhase);
+}
+
 function shockPressed() {
   if (!running || !armed) return;
+  przerwijCzekanie();
   arm(false);
   beep(660, 320);                       // ton wyładowania
 
@@ -356,6 +395,7 @@ function powerOff() {
   setCpr(false);
   clearTimeout(seqTimer); seq = [];
   bramka = null; pokazBramke(false);   // wylaczenie zdejmuje tez oczekiwanie
+  przerwijCzekanie();
   lamp('');
   $('say').innerHTML = 'Press <b>&nbsp;ON&nbsp;</b> to start';
   $('say').className = '';

@@ -5,7 +5,7 @@
  * jest JEDYNYM sposobem wypchnięcia aktualizacji, więc trzeba o tym pamiętać przy
  * każdym wydaniu.
  */
-var CACHE = 'anna-os-lite-v5';
+var CACHE = 'anna-os-lite-v6';
 
 var FILES = [
   './',
@@ -43,7 +43,8 @@ var FILES = [
   'audio/sh_4.mp3',
   'audio/sh_5.mp3',
   'audio/sh_6.mp3',
-  'audio/stop_1.mp3'
+  'audio/stop_1.mp3',
+  'audio/disarm.mp3'
 ];
 
 self.addEventListener('install', function (e) {
